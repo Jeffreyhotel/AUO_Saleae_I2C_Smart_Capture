@@ -1,0 +1,14 @@
+# .gitignore
+
+# Compiler output files
+*.o
+*.o.d
+
+# Objtect file
+*.elf
+*.hex
+*.map
+*.pptx
+*.zip
+
+# .gitignore
