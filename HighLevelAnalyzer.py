@@ -9,14 +9,26 @@ class Hla(HighLevelAnalyzer):
     # List of settings that a user can set for this High Level Analyzer.
     my_string_setting = StringSetting()
     my_number_setting = NumberSetting(min_value=0, max_value=100)
-    my_choices_setting = ChoicesSetting(choices=('A'))
-
+    my_choices_setting = ChoicesSetting(choices=('Diagnosis-Mode','Update-Mode'))
     # An optional list of types this analyzer produces, providing a way to customize the way frames are displayed in Logic 2.
-    result_types = {
-        'AUO_SGM_30.45': {
-            'format': 'Dignositic Result: {{data.input_type}}'
+    if my_choices_setting == "Diagnosis-Mode":
+        result_types = {
+            'AUO_SGM_30.45': {
+                'format': 'DiagResult: {{data.input_type}}'
+            }
         }
-    }
+    elif my_choices_setting == "Update-Mode":
+        result_types = {
+            'AUO_SGM_30.45': {
+                'format': 'UpdateResult: {{data.input_type}}'
+            }
+        }
+    else:
+        result_types = {
+            'AUO_SGM_30.45': {
+                'format': 'Result: {{data.input_type}}'
+            }
+        }
 
     def __init__(self):
         '''
@@ -27,14 +39,14 @@ class Hla(HighLevelAnalyzer):
 
         print("Settings:", self.my_string_setting,
               self.my_number_setting, self.my_choices_setting)
-        print("Author: Chengyu Chen")
+        print("Author: Chengyu Chen ")
 
     def decode(self, frame: AnalyzerFrame):
         '''
         Process a frame from the input analyzer, and optionally return a single `AnalyzerFrame` or a list of `AnalyzerFrame`s.
         The type and data values in `frame` will depend on the input analyzer.
         '''
-
+        
         '''Declare Global Variables'''
         global I2C_Write_Flag
         global I2C_Addr_0x12_Flag
@@ -45,6 +57,12 @@ class Hla(HighLevelAnalyzer):
         global Dignositic_0x1C_Shot
         global Dignositic_0x16_Check
         global Dignositic_0x1C_Check
+        global Update_Mode
+
+        if self.my_choices_setting == 'Update-Mode':
+            Update_Mode = 1
+        else:
+            Update_Mode = 0
 
         '''When I2C start, Do initial Setting.'''
         if frame.type == 'start':
@@ -68,6 +86,7 @@ class Hla(HighLevelAnalyzer):
                     I2C_Addr_0x12_Flag = 1
                     Dignositic_0x16_Flag = 0
                     Dignositic_0x1C_Flag = 0
+                    
                 else :
                     I2C_Addr_0x12_Flag = 0
             else :
@@ -90,6 +109,40 @@ class Hla(HighLevelAnalyzer):
                 if bytes(frame.data['data']) == b'\x1c':
                     Dignositic_0x1C_Flag = 1
                     #print('data 0x1C is captured')
+                if I2C_Addr_0x12_Flag == 1:
+                    if Update_Mode == 1:
+                        if bytes(frame.data['data']) == b'\x05':
+                            return AnalyzerFrame('AUO_SGM_30.45', frame.start_time, frame.end_time, {
+                                'input_type': str(frame.data['data'])+' = Display ID '
+                            })
+                        #if bytes(frame.data['data']) == b'\x20':
+                        #    return AnalyzerFrame('AUO_SGM_30.45', frame.start_time, frame.end_time, {
+                        #        'input_type': str(frame.data['data'])+' = Dimming CTRL '
+                        #    })
+                        if bytes(frame.data['data']) == b'\x31':
+                            return AnalyzerFrame('AUO_SGM_30.45', frame.start_time, frame.end_time, {
+                                'input_type': str(frame.data['data'])+' = APP Reset '
+                            })
+                        if bytes(frame.data['data']) == b'\x34':
+                            return AnalyzerFrame('AUO_SGM_30.45', frame.start_time, frame.end_time, {
+                                'input_type': str(frame.data['data'])+' = APP Key Send '
+                            })
+                        if bytes(frame.data['data']) == b'\x80':
+                            return AnalyzerFrame('AUO_SGM_30.45', frame.start_time, frame.end_time, {
+                                'input_type': str(frame.data['data'])+' = BL Status '
+                            })
+                        if bytes(frame.data['data']) == b'\x84':
+                            return AnalyzerFrame('AUO_SGM_30.45', frame.start_time, frame.end_time, {
+                                'input_type': str(frame.data['data'])+' = BL Unlock '
+                            })
+                        if bytes(frame.data['data']) == b'\x88':
+                            return AnalyzerFrame('AUO_SGM_30.45', frame.start_time, frame.end_time, {
+                                'input_type': str(frame.data['data'])+' = BL Erase '
+                            })
+                        if bytes(frame.data['data']) == b'\x8D':
+                            return AnalyzerFrame('AUO_SGM_30.45', frame.start_time, frame.end_time, {
+                                'input_type': str(frame.data['data'])+' = BL Write Flash '
+                            })
             elif I2C_Addr_0x12_Flag == 1:
                 if Dignositic_0x16_Flag == 1:
                     bytecount = bytecount +1
@@ -114,7 +167,7 @@ class Hla(HighLevelAnalyzer):
                             print('dignositic 0x1C check = PASS  ' + str(frame.data['data']))
                             Dignositic_0x1C_Check = 'PASS'
                         Dignositic_0x1C_Shot = 1
-
+                
         '''Check every frame and show RESULT.'''
         if Dignositic_0x16_Shot == 1:
             # Clear Flag
@@ -128,3 +181,4 @@ class Hla(HighLevelAnalyzer):
             return AnalyzerFrame('AUO_SGM_30.45', frame.start_time, frame.end_time, {
                 'input_type': str(frame.data['data'])+' = '+str(Dignositic_0x1C_Check)+'@Dia_1C'
             })
+        
