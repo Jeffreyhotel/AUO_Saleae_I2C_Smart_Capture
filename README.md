@@ -3,11 +3,9 @@
   
 ## Getting started
 
-1. Build your extension by updating the Python files for your needs
-2. Create a public Github repo and push your code 
-3. Update this README
-4. Open the Logic app and publish your extension
-5. Create a Github release
-6. Debug your hardware like you've never done before :)
-
+1. Only suitable for SGM 30.45 diagnostic use.
+2. PASS will result: dignositic 0x1C check = PASS  b'\x00'
+3. FAIL will result: dignositic 0x1C check = FAIL  b'\xXX'
+4. You Can find total result by search data table with key work : "FAIL"
+5. Enjoy your debugging.
   
